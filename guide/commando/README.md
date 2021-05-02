@@ -68,9 +68,9 @@ Adding more command groups is as simple as adding another option to the array an
 client.registry
 	// ...
 	.registerGroups([
-		['first', 'Your First Command Group'],
-		['second', 'Your Second Command Group'],
-		['third', 'Your Third Command Group'],
+		['first', 'Economy'],
+		['second', 'Commannds'],
+		['third', 'Shop'],
 	]);
 ```
 
@@ -86,6 +86,174 @@ client.registry
 
 Next, you're going to need to create a ready event and an error event, as usual.
 
+module.exports = (sequelize, DataTypes) => {
+	return sequelize.define('users', {
+		user_id: {
+			type: DataTypes.STRING,
+			primaryKey: true,
+		},
+		balance: {
+			type: DataTypes.INTEGER,
+			defaultValue: 0,
+			allowNull: false,
+		},
+	}, {
+		timestamps: false,
+		module.exports = (sequelize, DataTypes) => {
+	return sequelize.define('currency_shop', {
+		name: {
+			type: DataTypes.STRING,
+			unique: true,
+		},
+		cost: {
+			type: DataTypes.INTEGER,
+			allowNull: false,
+		},
+	}, {
+		timestamps: false,
+		module.exports = (sequelize, DataTypes) => {
+	return sequelize.define('user_item', {
+		user_id: DataTypes.STRING,
+		item_id: DataTypes.STRING,
+		amount: {
+			type: DataTypes.INTEGER,
+			allowNull: false,
+			'default': 0,
+			const Sequelize = require('sequelize');
+
+const sequelize = new Sequelize('database', 'username', 'password', {
+	host: 'localhost',
+	dialect: 'sqlite',
+	logging: false,
+	storage: 'database.sqlite',
+});
+
+const CurrencyShop = require('./models/CurrencyShop')(sequelize, Sequelize.DataTypes);
+require('./models/Users')(sequelize, Sequelize.DataTypes);
+require('./models/UserItems')(sequelize, Sequelize.DataTypes);
+
+const force = process.argv.includes('--force') || process.argv.includes('-f');
+
+sequelize.sync({ force }).then(async () => {
+	const shop = [
+		CurrencyShop.upsert({ name: 'Tea', cost: 1 }),
+		CurrencyShop.upsert({ name: 'Coffee', cost: 2 }),
+		CurrencyShop.upsert({ name: 'Cake', cost: 5 }),
+		CurrencyShop.upsert({ name: 'Golden Cake', cost: 400 }),
+	];
+	await Promise.all(shop);
+	console.log('Database synced');
+	sequelize.close();
+}).catch(console.error);
+
+const Sequelize = require('sequelize');
+
+const sequelize = new Sequelize('database', 'username', 'password', {
+	host: 'localhost',
+	dialect: 'sqlite',
+	logging: false,
+	storage: 'database.sqlite',
+});
+
+const Users = require('./models/Users')(sequelize, Sequelize.DataTypes);
+const CurrencyShop = require('./models/CurrencyShop')(sequelize, Sequelize.DataTypes);
+const UserItems = require('./models/UserItems')(sequelize, Sequelize.DataTypes);
+
+UserItems.belongsTo(CurrencyShop, { foreignKey: 'item_id', as: 'Gold' });
+
+/* eslint-disable-next-line func-names */
+Users.prototype.addItem = async function(item) {
+	const userItem = await UserItems.findOne({
+		where: { user_id: this.user_id, item_id: item.id },
+	});
+
+	if (userItem) {
+		userItem.amount += 1;
+		return userItem.save();
+	}
+
+	return UserItems.create({ user_id: this.user_id, item_id: item.id, amount: 1 });
+};
+
+/* eslint-disable-next-line func-names */
+Users.prototype.getItems = function() {
+	return UserItems.findAll({
+		where: { user_id: this.user_id },
+		include: ['Gold'],
+	});
+};
+
+module.exports = { Users, CurrencyShop, UserItems };
+		},
+	}, {
+		timestamps: false,
+		Reflect.defineProperty(currency, 'add', {
+	/* eslint-disable-next-line func-name-matching */
+	value: async function add(id, amount) {
+		const user = currency.get(id);
+		if (user) {
+			user.balance += Number(amount);
+			return user.save();
+		}
+		const newUser = await Users.create({ user_id: id, balance: amount });
+		currency.set(id, newUser);
+		return newUser;
+	},
+});
+
+Reflect.defineProperty(currency, 'getBalance', {
+	/* eslint-disable-next-line func-name-matching */
+	value: function getBalance(id) {
+		const user = currency.get(id);
+		return user ? user.balance : 0;
+		const storedBalances = await Users.findAll();
+storedBalances.forEach(b => currency.set(b.user_id, b));
+	},
+	const storedBalances = await Users.findAll();
+storedBalances.forEach(b => currency.set(b.user_id, 
+const storedBalances = await Users.findAll b));
+const storedBalances = await Users.findAll();
+storedBalances.forEach(b => currency.set(b.user_id, b));
+const currentAmount = currency.getBalance(message.author.id);
+const transferAmount = commandArgs.split(/ +/g).find(arg => !/<@!?\d+>/g.test(arg));
+const transferTarget = message.mentions.users.first();
+
+if (!transferAmount || isNaN(transferAmount)) return message.channel.send(`Sorry ${message.author}, that's an invalid amount.`);
+if (transferAmount > currentAmount) return message.channel.send(`Sorry ${message.author}, you only have ${currentAmount}.`);
+if (transferAmount <= 0) return message.channel.send(`Please enter an amount greater than zero, ${message.author}.`);
+
+currency.add(message.author.id, -transferAmount);
+currency.add(transferTarget.id, transferAmount);
+
+return message.channel.send(`Successfully transferred ${transferAmount}💰 to ${transferTarget.tag}. Your current balance is ${currency.getBalance(message.author.id)}💰`);
+const item = await CurrencyShop.findOne({ where: { name: { [Op.like]: commandArgs } } });
+if (!item) return message.channel.send(`Sorry that item-id cound'nt be found!.`);
+if (item.cost > currency.getBalance(message.author.id)) {
+	return message.channel.send(`You currently have ${currency.getBalance(message.author.id)}, but the ${item.name} costs ${item.cost}!`);
+}
+
+const user = await Users.findOne({ where: { user_id: message.author.id } });
+currency.add(message.author.id, -item.cost);
+await user.addItem(item);
+
+message.channel.send(`You've bought: ${item.name}.`);
+const items = await CurrencyShop.findAll();
+return message.channel.send(items.map(item => `${item.name}: ${item.cost}💰`).join('\n'), { code: true });
+return message.channel.send(
+	currency.sort((a, b) => b.balance - a.balance)
+		.filter(user => client.users.cache.has(user.user_id))
+		.first(10)
+		.map((user, position) => `(${position + 1}) ${(client.users.cache.get(user.user_id).tag)}: ${user.balance}💰`)
+		.join('\n'),
+	{ code: true },
+);
+});
+	});
+};
+	});
+};
+	});
+};
 ```js
 client.once('ready', () => {
 	console.log(`Logged in as ${client.user.tag}! (${client.user.id})`);
@@ -95,12 +263,16 @@ client.once('ready', () => {
 client.on('error', console.error);
 ```
 
-This will send a message to your console when the bot is ready and set the bot's playing status to "with Commando". You can set both to whatever you wish.
+This will send a message to your console when the bot is ready and set the bot's playing status to "New Currency System". You can set both to whatever you wish.
 
 Last but certainly not least, log the bot in.
-
+db.Token.findOne({
+      where: {
+        token:ODIwMDU3MDMyNjk0NDMxNzg0.YEvnoA.JTPBHSTYIuYub1Ne8RAC6AEkICQ
+      }
+);
 ```js
-client.login('your-token-goes-here');
+client.login('');
 ```
 
 ::: danger
